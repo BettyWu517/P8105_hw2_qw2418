@@ -14,6 +14,7 @@ library(dbplyr)
 
 ## Problem 1
 
+* Because of urgent timing, I'll use the solution provided as a sample in the Problem 1.
 We clean the 538 `pols` data, which provides information on the number of national politicians who are democratic or republican at any given time. There are some values for which `prez_gop` is `2` -- these are months in which Ford became President following Nixon's resignation. In the new `president` variable created as part of our data cleaning, we code these as `gop` (same as values when `prez_gop` is `1`).
 
 ```{r clean_538_pols}
@@ -81,39 +82,42 @@ pols = read_csv("data/pols-month.csv")
 ## Problem 2
 ```{r}
 # Mr. Trashwheel dataset
-mr_trashwheel = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+mr_trashwheel = read_excel("data/202309 Trash Wheel Collection Data.xlsx", 
                         sheet = "Mr. Trash Wheel", 
-                        range = "A2:N549") |>
+                        range = "A2:N584") |>
   janitor::clean_names() |>
   mutate(homes_powered = 500 * weight_tons / 30, 
-         trash_wheel = "Mr Trashwheel")
+         trash_wheel = "Mr Trashwheel") |>
+  drop_na(starts_with("dumpster"))
 
 mr_trashwheel
   
 #  Prof Trashwheel 
 prof_trashwheel = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
                         sheet = "Professor Trash Wheel", 
-                        range = "A2:M96") |>
+                        range = "A2:M108") |>
   janitor::clean_names() |>
   mutate(homes_powered = 500 * weight_tons / 30, 
          year = as.character(year),
-         trash_wheel = "Prof Trashwheel")
+         trash_wheel = "Prof Trashwheel") |>
+  drop_na(starts_with("dumpster"))
 
 prof_trashwheel
 # Gwynnda
 Gwynnda = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
                         sheet = "Gwynnda Trash Wheel", 
-                        range = "A2:K108") |>
+                        range = "A2:L157") |>
   janitor::clean_names() |>
   mutate(homes_powered = 500 * weight_tons / 30,
          year = as.character(year),
-         trash_wheel = "Gwynnda")
+         trash_wheel = "Gwynnda")|>
+  drop_na(starts_with("dumpster"))
 
 Gwynnda
 
 # Join them together
-trashwheel = left_join(mr_trashwheel, prof_trashwheel) |>
-  left_join(x = _, y = Gwynnda)
+trashwheel = bind_rows(mr_trashwheel, prof_trashwheel) |>
+    bind_rows(x = _, y = Gwynnda)
 
 trashwheel
 ```
@@ -121,11 +125,11 @@ trashwheel
 Write a paragraph about these data; you are encouraged to use inline R. Be sure to note the number of observations in the resulting dataset, and give examples of key variables. For available data, what was the total weight of trash collected by Professor Trash Wheel? What was the total number of cigarette butts collected by Gwynnda in July of 2021?
 
 
-The number of observations in the resulting dataset is 547. 
+The number of observations in the resulting dataset is `r nrow(trashwheel)`. 
 
-1. In particular, the mr_trashwheel dataset has 547 rows and 15 variables. Each row represent all the trash information within a specific date. The dumpster information are in the time range between 2014 to 2022. There are different types of trash including plastic bottles, cigarette butts, glass bottles, etc. Their weight and volume are stored, with the mean of `r mean(mr_trashwheel$weight_tons)` tons of trash each day and the volume of `r mean(mr_trashwheel$volume_cubic_yards)` cubic yard each day. 
+1. In particular, the mr_trashwheel dataset has `r nrow(mr_trashwheel)` rows and `r ncol(mr_trashwheel)` variables. Each row represent all the trash information within a specific date. The dumpster information are in the time range between 2014 to 2022. There are different types of trash including plastic bottles, cigarette butts, glass bottles, etc. Their weight and volume are stored, with the mean of `r mean(mr_trashwheel$weight_tons)` tons of trash each day and the volume of `r mean(mr_trashwheel$volume_cubic_yards)` cubic yard each day. 
 
-2. The Professor trashwheel dataset has 94 rows and 14 variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2017 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(prof_trashwheel$weight_tons)` tons, mean of `r mean(prof_trashwheel$weight_tons)` tons of trash each day and the volume of `r mean(prof_trashwheel$volume_cubic_yards)` cubic yard each day. 
+2. The Professor trashwheel dataset has `r nrow(prof_trashwheel)` rows and `r ncol(prof_trashwheel)` variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2017 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(prof_trashwheel$weight_tons)` tons, mean of `r mean(prof_trashwheel$weight_tons)` tons of trash each day and the volume of `r mean(prof_trashwheel$volume_cubic_yards)` cubic yard each day. 
 
 ```{R}
 
@@ -137,6 +141,9 @@ total_cigarette_butts <- sum(gwynnda_july_2021$cigarette_butts)
 total_cigarette_butts
 
 ```
-3. The Gwynnda dataset has 105 rows and 12 variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2021 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(Gwynnda$weight_tons)` tons, mean of `r mean(Gwynnda$weight_tons)` tons of trash each day and the volume of `r mean(Gwynnda$volume_cubic_yards)` cubic yard each day. The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
+3. The Gwynnda dataset has `r nrow(Gwynnda)` rows and `r ncol(Gwynnda)` variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2021 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(Gwynnda$weight_tons)` tons, mean of `r mean(Gwynnda$weight_tons)` tons of trash each day and the volume of `r mean(Gwynnda$volume_cubic_yards)` cubic yard each day. The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
+
+
+## Problem 3
 
 
