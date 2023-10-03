@@ -1,0 +1,142 @@
+---
+title: "p8105_hw2_qw2418"
+author: "Qianying Wu"
+date: "2023-10-03"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(dbplyr)
+```
+
+## Problem 1
+
+We clean the 538 `pols` data, which provides information on the number of national politicians who are democratic or republican at any given time. There are some values for which `prez_gop` is `2` -- these are months in which Ford became President following Nixon's resignation. In the new `president` variable created as part of our data cleaning, we code these as `gop` (same as values when `prez_gop` is `1`).
+
+```{r clean_538_pols}
+month_df = 
+  tibble(
+    month_num = 1:12,
+    month_abb = month.abb,
+    month = month.name
+  )
+
+pols = 
+  read_csv("data/pols-month.csv") |>
+  separate(mon, into = c("year", "month_num", "day"), convert = TRUE) |>
+  mutate(
+    president = recode(prez_gop, "0" = "dem", "1" = "gop", "2" = "gop")) |>
+  left_join(x = _, y = month_df) |> 
+  select(year, month, everything(), -day, -starts_with("prez")) 
+```
+
+We also clean the 538 `snp` data, which contains information related to Standard & Poor’s stock market index.
+
+```{r clean_538_snp}
+snp = 
+  read_csv("data/snp.csv") |>
+  separate(date, into = c("month", "day", "year"), convert = TRUE) |>
+  arrange(year, month) |>
+  mutate(month = month.name[month]) |>
+  select(year, month, close) 
+```
+
+Finally, we tidy the `unemployment` data so that it can be merged with the `pols` and `snp` datasets.
+
+```{r clean_538_unemp}
+unemployment = 
+  read_csv("data/unemployment.csv") |>
+  rename(year = Year) |>
+  pivot_longer(
+    Jan:Dec, 
+    names_to = "month_abb",
+    values_to = "unemployment"
+  ) |> 
+  left_join(x = _, y = month_df) |> 
+  select(year, month, unemployment)
+```
+
+Now we merge the three datasets!
+
+```{r merge_538}
+data_538 = 
+  left_join(pols, snp) |>
+  left_join(x = _, y = unemployment)
+
+str(data_538)
+```
+
+Notice that there are some `NA` values in the `close` and `unemployment` variables, which indicate that the value of these variables is missing at those locations.
+
+Let's talk about the 538 datasets. The `pols` data has `r nrow(pols)` observations and `r ncol(pols)` variables and tells us about the party affiliation distribution (democrat or republican) for governors and senators for a given year from years `r range(pols$year)[1]` to `r range(pols$year)[2]`. It also tells us whether the sitting president was a democrat or republican. The `snp` data has `r nrow(snp)` observations and `r ncol(snp)` variables, ranging from years `r range(snp$year)[1]` to `r range(snp$year)[2]`. The `unemployment` data has `r nrow(unemployment)` observations and `r ncol(unemployment)` variables ranging from years `r range(unemployment$year)[1]` to `r range(unemployment$year)[2]`. In Januarys in or after 1975 in which a democrat was president, the **average unemployment rate was `r filter(data_538, month == "January", year >= 1975, president == "dem") |> pull(unemployment) |> mean() |> round(2)`**.  The average unemployment rate over the same time period in which a republican was president was `r filter(data_538, month == "January", year >= 1975, president == "gop") |> pull(unemployment) |> mean() |> round(2)`.
+```{r}
+# read csv
+pols = read_csv("data/pols-month.csv")
+
+```
+
+## Problem 2
+```{r}
+# Mr. Trashwheel dataset
+mr_trashwheel = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+                        sheet = "Mr. Trash Wheel", 
+                        range = "A2:N549") |>
+  janitor::clean_names() |>
+  mutate(homes_powered = 500 * weight_tons / 30, 
+         trash_wheel = "Mr Trashwheel")
+
+mr_trashwheel
+  
+#  Prof Trashwheel 
+prof_trashwheel = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+                        sheet = "Professor Trash Wheel", 
+                        range = "A2:M96") |>
+  janitor::clean_names() |>
+  mutate(homes_powered = 500 * weight_tons / 30, 
+         year = as.character(year),
+         trash_wheel = "Prof Trashwheel")
+
+prof_trashwheel
+# Gwynnda
+Gwynnda = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+                        sheet = "Gwynnda Trash Wheel", 
+                        range = "A2:K108") |>
+  janitor::clean_names() |>
+  mutate(homes_powered = 500 * weight_tons / 30,
+         year = as.character(year),
+         trash_wheel = "Gwynnda")
+
+Gwynnda
+
+# Join them together
+trashwheel = left_join(mr_trashwheel, prof_trashwheel) |>
+  left_join(x = _, y = Gwynnda)
+
+trashwheel
+```
+
+Write a paragraph about these data; you are encouraged to use inline R. Be sure to note the number of observations in the resulting dataset, and give examples of key variables. For available data, what was the total weight of trash collected by Professor Trash Wheel? What was the total number of cigarette butts collected by Gwynnda in July of 2021?
+
+
+The number of observations in the resulting dataset is 547. 
+
+1. In particular, the mr_trashwheel dataset has 547 rows and 15 variables. Each row represent all the trash information within a specific date. The dumpster information are in the time range between 2014 to 2022. There are different types of trash including plastic bottles, cigarette butts, glass bottles, etc. Their weight and volume are stored, with the mean of `r mean(mr_trashwheel$weight_tons)` tons of trash each day and the volume of `r mean(mr_trashwheel$volume_cubic_yards)` cubic yard each day. 
+
+2. The Professor trashwheel dataset has 94 rows and 14 variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2017 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(prof_trashwheel$weight_tons)` tons, mean of `r mean(prof_trashwheel$weight_tons)` tons of trash each day and the volume of `r mean(prof_trashwheel$volume_cubic_yards)` cubic yard each day. 
+
+```{R}
+
+gwynnda_july_2021 <- Gwynnda |>
+  filter(month == "July", year == 2021)
+
+total_cigarette_butts <- sum(gwynnda_july_2021$cigarette_butts)
+
+total_cigarette_butts
+
+```
+3. The Gwynnda dataset has 105 rows and 12 variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2021 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(Gwynnda$weight_tons)` tons, mean of `r mean(Gwynnda$weight_tons)` tons of trash each day and the volume of `r mean(Gwynnda$volume_cubic_yards)` cubic yard each day. The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
+
+
