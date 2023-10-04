@@ -15,6 +15,7 @@ library(dbplyr)
 ## Problem 1
 
 * Because of urgent timing, I'll use the solution provided as a sample in the Problem 1.
+
 We clean the 538 `pols` data, which provides information on the number of national politicians who are democratic or republican at any given time. There are some values for which `prez_gop` is `2` -- these are months in which Ford became President following Nixon's resignation. In the new `president` variable created as part of our data cleaning, we code these as `gop` (same as values when `prez_gop` is `1`).
 
 ```{r clean_538_pols}
@@ -83,35 +84,33 @@ pols = read_csv("data/pols-month.csv")
 ```{r}
 # Mr. Trashwheel dataset
 mr_trashwheel = read_excel("data/202309 Trash Wheel Collection Data.xlsx", 
-                        sheet = "Mr. Trash Wheel", 
-                        range = "A2:N584") |>
+                        sheet = 1, 
+                        range = "A2:N586") |>
   janitor::clean_names() |>
   mutate(homes_powered = 500 * weight_tons / 30, 
          trash_wheel = "Mr Trashwheel") |>
-  drop_na(starts_with("dumpster"))
+  drop_na(dumpster)
 
 mr_trashwheel
   
 #  Prof Trashwheel 
-prof_trashwheel = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
-                        sheet = "Professor Trash Wheel", 
-                        range = "A2:M108") |>
+prof_trashwheel = read_excel("data/202309 Trash Wheel Collection Data.xlsx", 
+                        sheet = 2) |>
   janitor::clean_names() |>
   mutate(homes_powered = 500 * weight_tons / 30, 
          year = as.character(year),
          trash_wheel = "Prof Trashwheel") |>
-  drop_na(starts_with("dumpster"))
+  drop_na(dumpster)
 
 prof_trashwheel
 # Gwynnda
-Gwynnda = read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
-                        sheet = "Gwynnda Trash Wheel", 
-                        range = "A2:L157") |>
+Gwynnda = read_excel("data/202309 Trash Wheel Collection Data.xlsx", 
+                        sheet = 4) |>
   janitor::clean_names() |>
   mutate(homes_powered = 500 * weight_tons / 30,
          year = as.character(year),
          trash_wheel = "Gwynnda")|>
-  drop_na(starts_with("dumpster"))
+  drop_na(dumpster)
 
 Gwynnda
 
@@ -143,7 +142,74 @@ total_cigarette_butts
 ```
 3. The Gwynnda dataset has `r nrow(Gwynnda)` rows and `r ncol(Gwynnda)` variables. As the same above, each row represent all the trash information within a specific date. The dumpster information are in the time range between 2021 to 2022. The trash's weight and volume are stored, with the total trash of weight `r sum(Gwynnda$weight_tons)` tons, mean of `r mean(Gwynnda$weight_tons)` tons of trash each day and the volume of `r mean(Gwynnda$volume_cubic_yards)` cubic yard each day. The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
 
-
 ## Problem 3
 
+### Part 1
+Import, clean, and tidy the dataset of baseline demographics. Ensure that sex and APOE4 carrier status are appropriate encoded (i.e. not numeric), and remove any participants who do not meet the stated inclusion criteria (i.e. no MCI at baseline). 
 
+```{r}
+baseline_df = 
+  read_csv("data/MCI_baseline.csv", skip = 1) |>
+  janitor::clean_names() |>
+  mutate(sex = recode(sex, "0"= "female", "1" = "male"),
+         apoe4 = recode(apoe4, "0" = "non_carrier", "1" = "carrier"),
+         age_at_onset = ifelse(age_at_onset == ".", NA, age_at_onset)) 
+baseline_df
+
+MCI = baseline_df |>
+  filter(is.na(age_at_onset)|(current_age < age_at_onset))
+  
+MCI
+```
+
+Discuss important steps in the import process and relevant features of the dataset. How many participants were recruited, and of these how many develop MCI? What is the average baseline age? What proportion of women in the study are APOE4 carriers?
+
+After reading the dataset in, I first clean the data variable names, then I use the mutate function to change sex and apoe4 variables from numbers to characters. Later, I get rid of the no MCI dataset.
+
+Of all participants, there are a total of `r nrow(baseline_df)` participants recruited.
+Among these participants, `r nrow(MCI)` participants develop MCI. Their average baseline age is `r mean(MCI$current_age)` years old. `r (sum(MCI$sex == "female" & MCI$apoe4 == "carrier")/sum(MCI$sex == "female")) * 100` % of women in the study are APEO4 carriers.
+
+### Part 2
+Similarly, import, clean, and tidy the dataset of longitudinally observed biomarker values
+
+```{r}
+amyloid_df = 
+  read_csv("data/mci_amyloid.csv", skip = 1) |>
+  janitor::clean_names() |>
+  rename(time_0 = baseline,
+         id = study_id) |>
+  pivot_longer(
+    time_0:time_8,
+    names_to = "period_time",
+    values_to = "year"
+  )
+  
+amyloid_df
+```
+
+Comment on the steps on the import process and the features of the dataset.
+
+After reading the data, I cleaned the variable names. Then, I set the baseline variable to time_0 in order to better organize the time data. Then, I used pivot_longer to turn the row data in a column to better visualize the data. Last, I got rid of the missing values. 
+There are total number of `r nrow(amyloid_df)` data entry  in the study with meaningful data. 
+
+
+### Part 3
+
+Check whether some participants appear in only the baseline or amyloid datasets, and comment on your findings. Combine the demographic and biomarker datasets so that only participants who appear in both datasets are retained, and briefly describe the resulting dataset; export the result as a CSV to your data directory.
+
+
+```{r}
+combined1 = anti_join(MCI, amyloid_df)
+
+combined2 = anti_join(amyloid_df, MCI)
+
+combined3 = inner_join(MCI, amyloid_df)
+
+combined1
+combined2
+combined3
+
+```
+
+We want to use the anti_join function to join the dataset MCI and amyloid twice to find the unique id in each dataset. We later use the inner_join function to join the two dataset and find the participants shared by both dataset. 
+There are `r nrow(combined1)` data uniquely in the MCI dataset, and `r nrow(combined2)` data only in the amyloid_df dataset. There are `r nrow(combined3)` participants' data in both MCI and amyloid_df dataset. 
