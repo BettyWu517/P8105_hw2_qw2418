@@ -210,6 +210,11 @@ combined1
 combined2
 combined3
 
+csv_file_path <- "data/combined.csv"
+write.csv(combined3, file = csv_file_path, row.names = FALSE)
+
+
+
 ```
 
 We want to use the anti_join function to join the dataset MCI and amyloid twice to find the unique id in each dataset. We later use the inner_join function to join the two dataset and find the participants shared by both dataset. 
