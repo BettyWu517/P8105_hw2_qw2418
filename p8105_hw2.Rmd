@@ -81,6 +81,7 @@ pols = read_csv("data/pols-month.csv")
 ```
 
 ## Problem 2
+
 ```{r}
 # Mr. Trashwheel dataset
 mr_trashwheel = read_excel("data/202309 Trash Wheel Collection Data.xlsx", 
